@@ -372,34 +372,19 @@ Retry-After: 37
 
 ## Design decisions
 
-**Why these resources.** Stops, routes, vehicles, and bookings mirror a real transit operator's data model
-closely enough to be interesting (many-to-many route↔stop with ordering, optional vehicle→route assignment,
-booking→route + two stops) without needing a fifth resource just to hit a number.
+Short version, resource-by-resource facts are documented inline above (identifiers, envelope shape, filters,
+sort fields). For the fuller reasoning behind one specific choice — what happens when a caller asks for 5000
+records in one request, and why — see [ANSWERS.md](ANSWERS.md).
 
-**Why generated identifiers.** IDs are `<prefix>_<16 hex chars>` (e.g. `rte_4d7113fc1c609843`), not
-auto-increment integers. A sequential id lets anyone enumerate the entire table by counting up from 1; a
-random id doesn't. The prefix (`stp_`, `rte_`, `veh_`, `bkg_`) also means a malformed or wrong-type id is
-caught with a cheap regex check before it ever reaches the database — `GET /routes/stp_xxx` is a `404`/`400`
-immediately rather than an accidental cross-table `500`.
-
-**Why both offset and cursor pagination.** Offset is what most consumers expect and is trivial to build a
-"page 3" UI on top of; cursor pagination is what you actually want once the table is being written to
-concurrently, because a keyset cursor doesn't shift or skip rows when something is inserted or deleted between
-pages the way an offset can. Supporting both, and rejecting the combination, lets a consumer pick the tradeoff
-instead of the API forcing one on them.
-
-**Envelope shape.** `{"data", "meta"}` on success and `{"error": {"code", "message"}}` on failure, applied
-identically to every endpoint. A consumer can check `res.ok` and then unconditionally read `json.data` or
-`json.error` without special-casing any particular route — the pagination metadata (`total`/`limit`/`offset`/
-`hasMore`/`nextCursor`) lives in one place (`meta`) instead of being spread across custom headers.
-
-**Why `/v1/` from the first commit.** Renaming a path or changing a response shape later is a breaking change
-for anyone already consuming the API. Versioning the path up front means a `/v2/` can exist someday alongside
-`/v1/` without breaking whoever already built against it.
-
-**Denormalising on read.** `bookings` and `vehicles` return joined fields (`route_code`, `from_stop_name`,
-`route_code`, …) directly, computed server-side with a `JOIN`, so the consumer app never has to make N+1
-requests to render a readable row.
+- **Resources:** stops/routes/vehicles/bookings mirror a real transit operator's relationships (ordered
+  route↔stop many-to-many, optional vehicle→route, booking→route + two stops).
+- **Identifiers:** random `<prefix>_<16 hex>` tokens, not sequential integers, so the dataset can't be
+  enumerated by counting, and a malformed id fails a cheap regex check before ever reaching the database.
+- **Pagination:** both offset (`?limit&offset`) and cursor (`?limit&cursor`) are supported; `limit` clamps to
+  100 rather than erroring — see [ANSWERS.md](ANSWERS.md) for why.
+- **Envelope:** `{"data","meta"}` on success, `{"error":{"code","message"}}` on failure, identical everywhere.
+- **Versioning:** `/api/v1/` from the first commit, so a `/v2/` can exist later without breaking `/v1/`
+  clients.
 
 ## Local development
 
