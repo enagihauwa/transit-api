@@ -1,0 +1,69 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-09-24T13:37:17.090Z",
+  "__export_source": "insomnia.desktop.app:v2025.1.0",
+  "resources": [
+    {
+      "_id": "wrk_transit_api",
+      "_type": "workspace",
+      "name": "Transit API",
+      "description": "Public REST API for a fictional transit market: stops, routes, vehicles and bookings.",
+      "scope": "collection"
+    },
+    {
+      "_id": "env_base",
+      "_type": "environment",
+      "parentId": "wrk_transit_api",
+      "name": "Base Environment",
+      "data": {
+        "scheme": "http",
+        "domain": "127.0.0.1",
+        "port": "3000",
+        "api_prefix": "/api/v1",
+        "base_url": "{{ _.scheme }}://{{ _.domain }}:{{ _.port }}",
+        "api_url": "{{ _.scheme }}://{{ _.domain }}:{{ _.port }}{{ _.api_prefix }}",
+        "default_limit": "20",
+        "max_limit": "100",
+        "cursor": "",
+        "stop_id": "",
+        "route_id": "",
+        "vehicle_id": "",
+        "booking_id": "",
+        "booking_reference": "",
+        "from_stop_id": "",
+        "to_stop_id": "",
+        "passenger_name": "Maya Lindholm",
+        "passenger_email": "maya.lindholm@example.com",
+        "travel_date": "2026-11-15",
+        "booking_status": "confirmed",
+        "stop_city": "Seattle",
+        "stop_type": "bus",
+        "route_city": "Seattle",
+        "vehicle_status": "active",
+        "vehicle_type": "bus",
+        "booking_status_filter": "confirmed"
+      }
+    },
+    {
+      "_id": "env_local",
+      "_type": "environment",
+      "parentId": "wrk_transit_api",
+      "name": "Local - port 3000",
+      "color": "#57c46d",
+      "data": {
+        "port": "3000"
+      }
+    },
+    {
+      "_id": "env_test",
+      "_type": "environment",
+      "parentId": "wrk_transit_api",
+      "name": "Test/CI - port 3100",
+      "color": "#f09a3e",
+      "data": {
+        "port": "3100"
+      }
+    }
+  ]
+}

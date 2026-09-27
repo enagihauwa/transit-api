@@ -1,0 +1,570 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Transit API Explorer</title>
+<style>
+  :root {
+    --bg: #0b1120;
+    --panel: #111a2e;
+    --panel-border: #1f2c46;
+    --text: #e6ebf5;
+    --muted: #8a97b3;
+    --accent: #4f8cff;
+    --accent-2: #29d3a2;
+    --danger: #ff6b6b;
+    --row-alt: #0e1626;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  header {
+    padding: 20px 24px 8px;
+    border-bottom: 1px solid var(--panel-border);
+  }
+  header h1 { margin: 0 0 4px; font-size: 1.4rem; }
+  header p { margin: 0 0 14px; color: var(--muted); font-size: 0.9rem; }
+  .api-base {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .api-base label { color: var(--muted); font-size: 0.82rem; white-space: nowrap; }
+  .api-base input {
+    flex: 1;
+    min-width: 220px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+  }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tabs button {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    color: var(--muted);
+    padding: 8px 14px;
+    border-radius: 8px 8px 0 0;
+    cursor: pointer;
+    font-size: 0.88rem;
+  }
+  .tabs button.active {
+    color: var(--text);
+    border-color: var(--accent);
+    background: #142140;
+  }
+  main { padding: 18px 24px 40px; max-width: 1100px; margin: 0 auto; }
+  .toolbar {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    margin-bottom: 14px;
+    padding: 14px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+  }
+  .field { display: flex; flex-direction: column; gap: 4px; min-width: 130px; }
+  .field label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+  .field input, .field select {
+    background: #0d1526;
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    padding: 7px 8px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+  }
+  .field button {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    height: 34px;
+  }
+  .field button.secondary {
+    background: transparent;
+    border: 1px solid var(--panel-border);
+    color: var(--muted);
+  }
+  .status-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    color: var(--muted);
+    font-size: 0.82rem;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  #errorBox {
+    display: none;
+    background: #2a1420;
+    border: 1px solid var(--danger);
+    color: #ffb4b4;
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+  }
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  thead th {
+    text-align: left;
+    padding: 10px 12px;
+    background: #142140;
+    color: var(--muted);
+    font-weight: 600;
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+  }
+  tbody td {
+    padding: 8px 12px;
+    border-top: 1px solid var(--panel-border);
+    white-space: nowrap;
+  }
+  tbody tr:nth-child(even) { background: var(--row-alt); }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+  .badge.active, .badge.confirmed { background: rgba(41,211,162,0.15); color: var(--accent-2); }
+  .badge.maintenance, .badge.pending { background: rgba(255,190,80,0.15); color: #ffbe50; }
+  .badge.retired, .badge.cancelled { background: rgba(255,107,107,0.15); color: var(--danger); }
+  .pager {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .pager button {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+  .pager button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .empty { padding: 30px; text-align: center; color: var(--muted); }
+  footer { text-align: center; color: var(--muted); font-size: 0.78rem; padding: 20px; }
+  footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Transit API Explorer</h1>
+  <p>A minimal consumer that calls the live Transit API and renders the result &mdash; proving pagination, filtering, and sorting all work together from the outside.</p>
+  <div class="api-base">
+    <label for="apiBase">API base</label>
+    <input id="apiBase" type="text" spellcheck="false" />
+    <button id="apiBaseReset" class="field-inline">use current origin</button>
+  </div>
+  <div class="tabs" id="tabs"></div>
+</header>
+<main>
+  <div class="toolbar" id="toolbar"></div>
+  <div class="status-line">
+    <span id="resultSummary">Loading&hellip;</span>
+    <span id="requestUrl"></span>
+  </div>
+  <div id="errorBox"></div>
+  <div class="table-wrap">
+    <table>
+      <thead id="thead"></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div class="empty" id="emptyState" style="display:none;">No results match these filters.</div>
+  </div>
+  <div class="pager">
+    <button id="prevBtn">&larr; Previous</button>
+    <span id="pageInfo" style="color: var(--muted); font-size: 0.85rem;"></span>
+    <button id="nextBtn">Next &rarr;</button>
+  </div>
+</main>
+<footer>
+  Consumer app calls <code id="footerBase"></code>/api/v1 directly from your browser &mdash; open devtools Network tab to see the requests.
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  const RESOURCES = {
+    stops: {
+      label: "Stops",
+      columns: [
+        { key: "name", label: "Name" },
+        { key: "city", label: "City" },
+        { key: "stop_type", label: "Type" },
+        { key: "zone", label: "Zone" },
+        { key: "latitude", label: "Lat" },
+        { key: "longitude", label: "Lon" }
+      ],
+      sortFields: ["name", "city", "zone", "latitude", "longitude", "created_at"],
+      defaultSort: "name",
+      filters: [
+        { param: "city", label: "City", type: "text" },
+        { param: "stopType", label: "Stop type", type: "select", options: ["", "bus", "tram", "metro", "rail"] },
+        { param: "zone", label: "Zone", type: "text" },
+        { param: "name", label: "Name contains", type: "text" }
+      ]
+    },
+    routes: {
+      label: "Routes",
+      columns: [
+        { key: "code", label: "Code" },
+        { key: "name", label: "Name" },
+        { key: "mode", label: "Mode" },
+        { key: "city", label: "City" },
+        { key: "distance_km", label: "Distance (km)" },
+        { key: "base_fare", label: "Base fare" },
+        { key: "stop_count", label: "Stops" },
+        { key: "active", label: "Active", render: (v) => badge(v ? "active" : "retired", v ? "yes" : "no") }
+      ],
+      sortFields: ["code", "name", "city", "operator", "distance_km", "base_fare", "created_at"],
+      defaultSort: "base_fare",
+      filters: [
+        { param: "city", label: "City", type: "text" },
+        { param: "mode", label: "Mode", type: "select", options: ["", "bus", "tram", "metro", "rail"] },
+        { param: "minFare", label: "Min fare", type: "number" },
+        { param: "maxFare", label: "Max fare", type: "number" }
+      ]
+    },
+    vehicles: {
+      label: "Vehicles",
+      columns: [
+        { key: "registration", label: "Registration" },
+        { key: "make", label: "Make" },
+        { key: "model", label: "Model" },
+        { key: "vehicle_type", label: "Type" },
+        { key: "capacity", label: "Capacity" },
+        { key: "status", label: "Status", render: (v) => badge(v, v) },
+        { key: "route_code", label: "Route" }
+      ],
+      sortFields: ["registration", "make", "year", "capacity", "created_at"],
+      defaultSort: "created_at",
+      defaultOrder: "desc",
+      filters: [
+        { param: "status", label: "Status", type: "select", options: ["", "active", "maintenance", "retired"] },
+        { param: "vehicleType", label: "Vehicle type", type: "select", options: ["", "bus", "tram", "metro", "rail"] }
+      ]
+    },
+    bookings: {
+      label: "Bookings",
+      columns: [
+        { key: "reference", label: "Reference" },
+        { key: "passenger_name", label: "Passenger" },
+        { key: "route_code", label: "Route" },
+        { key: "from_stop_name", label: "From" },
+        { key: "to_stop_name", label: "To" },
+        { key: "seats", label: "Seats" },
+        { key: "fare", label: "Fare" },
+        { key: "status", label: "Status", render: (v) => badge(v, v) },
+        { key: "travel_date", label: "Travel date" }
+      ],
+      sortFields: ["reference", "passenger_name", "fare", "seats", "travel_date", "status", "created_at"],
+      defaultSort: "travel_date",
+      filters: [
+        { param: "status", label: "Status", type: "select", options: ["", "confirmed", "pending", "cancelled"] },
+        { param: "travelDate", label: "Travel date", type: "text", placeholder: "YYYY-MM-DD" },
+        { param: "passenger", label: "Passenger contains", type: "text" }
+      ]
+    }
+  };
+
+  const LIMIT = 20;
+
+  let state = {
+    resource: "routes",
+    offset: 0,
+    filters: {},
+    sort: RESOURCES.routes.defaultSort,
+    order: RESOURCES.routes.defaultOrder || "asc",
+    lastMeta: null
+  };
+
+  const el = (id) => document.getElementById(id);
+
+  function badge(cls, text) {
+    return `<span class="badge ${cls}">${text}</span>`;
+  }
+
+  function apiBaseValue() {
+    return el("apiBase").value.trim().replace(/\/+$/, "");
+  }
+
+  function buildTabs() {
+    const tabs = el("tabs");
+    tabs.innerHTML = "";
+    Object.entries(RESOURCES).forEach(([key, def]) => {
+      const btn = document.createElement("button");
+      btn.textContent = def.label;
+      btn.dataset.resource = key;
+      btn.className = key === state.resource ? "active" : "";
+      btn.addEventListener("click", () => selectResource(key));
+      tabs.appendChild(btn);
+    });
+  }
+
+  function selectResource(key) {
+    state.resource = key;
+    state.offset = 0;
+    state.filters = {};
+    state.sort = RESOURCES[key].defaultSort;
+    state.order = RESOURCES[key].defaultOrder || "asc";
+    buildTabs();
+    buildToolbar();
+    load();
+  }
+
+  function buildToolbar() {
+    const def = RESOURCES[state.resource];
+    const toolbar = el("toolbar");
+    toolbar.innerHTML = "";
+
+    def.filters.forEach((f) => {
+      const wrap = document.createElement("div");
+      wrap.className = "field";
+      const label = document.createElement("label");
+      label.textContent = f.label;
+      wrap.appendChild(label);
+
+      let input;
+      if (f.type === "select") {
+        input = document.createElement("select");
+        f.options.forEach((opt) => {
+          const o = document.createElement("option");
+          o.value = opt;
+          o.textContent = opt === "" ? "Any" : opt;
+          input.appendChild(o);
+        });
+      } else {
+        input = document.createElement("input");
+        input.type = f.type === "number" ? "number" : "text";
+        if (f.placeholder) input.placeholder = f.placeholder;
+      }
+      input.dataset.param = f.param;
+      wrap.appendChild(input);
+      toolbar.appendChild(wrap);
+    });
+
+    const sortWrap = document.createElement("div");
+    sortWrap.className = "field";
+    sortWrap.innerHTML = "<label>Sort by</label>";
+    const sortSelect = document.createElement("select");
+    sortSelect.id = "sortField";
+    def.sortFields.forEach((s) => {
+      const o = document.createElement("option");
+      o.value = s;
+      o.textContent = s;
+      if (s === state.sort) o.selected = true;
+      sortSelect.appendChild(o);
+    });
+    sortWrap.appendChild(sortSelect);
+    toolbar.appendChild(sortWrap);
+
+    const orderWrap = document.createElement("div");
+    orderWrap.className = "field";
+    orderWrap.innerHTML = "<label>Order</label>";
+    const orderSelect = document.createElement("select");
+    orderSelect.id = "sortOrder";
+    ["asc", "desc"].forEach((o) => {
+      const opt = document.createElement("option");
+      opt.value = o;
+      opt.textContent = o;
+      if (o === state.order) opt.selected = true;
+      orderSelect.appendChild(opt);
+    });
+    orderWrap.appendChild(orderSelect);
+    toolbar.appendChild(orderWrap);
+
+    const btnWrap = document.createElement("div");
+    btnWrap.className = "field";
+    btnWrap.innerHTML = "<label>&nbsp;</label>";
+    const applyBtn = document.createElement("button");
+    applyBtn.textContent = "Apply";
+    applyBtn.addEventListener("click", applyToolbar);
+    btnWrap.appendChild(applyBtn);
+    toolbar.appendChild(btnWrap);
+
+    const clearWrap = document.createElement("div");
+    clearWrap.className = "field";
+    clearWrap.innerHTML = "<label>&nbsp;</label>";
+    const clearBtn = document.createElement("button");
+    clearBtn.textContent = "Clear filters";
+    clearBtn.className = "secondary";
+    clearBtn.addEventListener("click", () => {
+      state.filters = {};
+      state.offset = 0;
+      buildToolbar();
+      load();
+    });
+    clearWrap.appendChild(clearBtn);
+    toolbar.appendChild(clearWrap);
+  }
+
+  function applyToolbar() {
+    const def = RESOURCES[state.resource];
+    const filters = {};
+    def.filters.forEach((f) => {
+      const input = document.querySelector(`#toolbar [data-param="${f.param}"]`);
+      if (input && input.value !== "") filters[f.param] = input.value;
+    });
+    state.filters = filters;
+    state.sort = el("sortField").value;
+    state.order = el("sortOrder").value;
+    state.offset = 0;
+    load();
+  }
+
+  function buildTableHead() {
+    const def = RESOURCES[state.resource];
+    const thead = el("thead");
+    thead.innerHTML = "<tr>" + def.columns.map((c) => `<th>${c.label}</th>`).join("") + "</tr>";
+  }
+
+  function renderRows(rows) {
+    const def = RESOURCES[state.resource];
+    const tbody = el("tbody");
+    const emptyState = el("emptyState");
+    if (rows.length === 0) {
+      tbody.innerHTML = "";
+      emptyState.style.display = "block";
+      return;
+    }
+    emptyState.style.display = "none";
+    tbody.innerHTML = rows
+      .map((row) => {
+        const cells = def.columns.map((c) => {
+          const raw = row[c.key];
+          const value = c.render ? c.render(raw) : raw === null || raw === undefined ? "&mdash;" : raw;
+          return `<td>${value}</td>`;
+        });
+        return `<tr>${cells.join("")}</tr>`;
+      })
+      .join("");
+  }
+
+  function buildUrl() {
+    const base = apiBaseValue();
+    const params = new URLSearchParams();
+    params.set("limit", LIMIT);
+    params.set("offset", state.offset);
+    if (state.sort) params.set("sort", state.sort);
+    if (state.order) params.set("order", state.order);
+    Object.entries(state.filters).forEach(([k, v]) => params.set(k, v));
+    return `${base}/api/v1/${state.resource}?${params.toString()}`;
+  }
+
+  async function load() {
+    buildTableHead();
+    el("errorBox").style.display = "none";
+    el("resultSummary").textContent = "Loading…";
+    const url = buildUrl();
+    el("requestUrl").textContent = url.replace(apiBaseValue(), "");
+
+    try {
+      const res = await fetch(url);
+      const json = await res.json();
+
+      if (!res.ok) {
+        const msg = json?.error?.message || `HTTP ${res.status}`;
+        el("errorBox").textContent = `${res.status} ${json?.error?.code || ""}: ${msg}`;
+        el("errorBox").style.display = "block";
+        el("resultSummary").textContent = "Request failed.";
+        renderRows([]);
+        updatePager(null);
+        return;
+      }
+
+      renderRows(json.data);
+      state.lastMeta = json.meta;
+      const { total, limit, offset, hasMore } = json.meta;
+      const from = total === 0 ? 0 : offset + 1;
+      const to = Math.min(offset + limit, total);
+      el("resultSummary").textContent = `Showing ${from}–${to} of ${total}`;
+      updatePager(json.meta);
+    } catch (err) {
+      el("errorBox").textContent = `Network error calling ${url}: ${err.message}. Is the API base correct and reachable (CORS + HTTPS)?`;
+      el("errorBox").style.display = "block";
+      el("resultSummary").textContent = "Request failed.";
+      renderRows([]);
+      updatePager(null);
+    }
+  }
+
+  function updatePager(meta) {
+    const prevBtn = el("prevBtn");
+    const nextBtn = el("nextBtn");
+    if (!meta) {
+      prevBtn.disabled = true;
+      nextBtn.disabled = true;
+      el("pageInfo").textContent = "";
+      return;
+    }
+    prevBtn.disabled = meta.offset <= 0;
+    nextBtn.disabled = !meta.hasMore;
+    const page = Math.floor(meta.offset / meta.limit) + 1;
+    const pages = Math.max(1, Math.ceil(meta.total / meta.limit));
+    el("pageInfo").textContent = `Page ${page} of ${pages}`;
+  }
+
+  el("prevBtn").addEventListener("click", () => {
+    state.offset = Math.max(0, state.offset - LIMIT);
+    load();
+  });
+  el("nextBtn").addEventListener("click", () => {
+    if (state.lastMeta?.hasMore) {
+      state.offset += LIMIT;
+      load();
+    }
+  });
+
+  el("apiBaseReset").addEventListener("click", () => {
+    el("apiBase").value = window.location.origin;
+    el("footerBase").textContent = el("apiBase").value;
+    state.offset = 0;
+    load();
+  });
+  el("apiBase").addEventListener("change", () => {
+    el("footerBase").textContent = apiBaseValue();
+    state.offset = 0;
+    load();
+  });
+
+  el("apiBase").value = window.location.origin;
+  el("footerBase").textContent = el("apiBase").value;
+
+  buildTabs();
+  buildToolbar();
+  load();
+})();
+</script>
+</body>
+</html>

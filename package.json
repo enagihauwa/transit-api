@@ -1,0 +1,30 @@
+{
+  "name": "transit-api",
+  "version": "1.0.0",
+  "description": "Public REST API for a fictional transit market: stops, routes, vehicles and bookings.",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "seed": "node src/seed.js",
+    "seed:reset": "node src/seed.js --reset",
+    "test": "node scripts/verify.mjs",
+    "verify:live": "node scripts/verify.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@faker-js/faker": "^10.6.0",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "morgan": "^1.12.1",
+    "pg": "^8.23.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}

@@ -1,0 +1,1219 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+    "name": "Transit API",
+    "description": "Public REST API for a fictional transit market: stops, routes, vehicles and bookings.\n\nSelect the matching environment (Local - port 3000 or Test/CI - port 3100) before sending requests.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": []
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": []
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "default_limit",
+      "value": "20"
+    },
+    {
+      "key": "max_limit",
+      "value": "100"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Response time is reasonable', () => pm.expect(pm.response.responseTime).to.be.below(1000));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            },
+            "description": "Liveness probe. Expect 200."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Stops",
+      "description": "Collection of stops with a random getter.",
+      "item": [
+        {
+          "name": "List Stops",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Has data array', () => pm.expect(json.data).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_url}}/stops?limit={{default_limit}}&sort=name&order=asc",
+              "host": ["{{api_url}}"],
+              "path": ["stops"],
+              "query": [
+                { "key": "limit", "value": "{{default_limit}}" },
+                { "key": "sort", "value": "name" },
+                { "key": "order", "value": "asc" }
+              ]
+            },
+            "description": "Paginated stop list. Supports sort/order, offset/cursor and filters (city, stopType, zone, name)."
+          },
+          "response": []
+        },
+        {
+          "name": "List Stops (filtered)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_url}}/stops?city={{stop_city}}&stopType={{stop_type}}&limit={{default_limit}}",
+              "host": ["{{api_url}}"],
+              "path": ["stops"],
+              "query": [
+                { "key": "city", "value": "{{stop_city}}" },
+                { "key": "stopType", "value": "{{stop_type}}" },
+                { "key": "limit", "value": "{{default_limit}}" }
+              ]
+            },
+            "description": "Filter by city and stop type using environment variables {{stop_city}} and {{stop_type}}."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Stop",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const token = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);",
+                  "pm.environment.set('stop_name', 'Transit Hub ' + token.toUpperCase());",
+                  "console.log('stop_name = ' + pm.environment.get('stop_name') + ' (editable via env or by disabling this pre-request script)');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.environment.set('stop_id', json.data.id);",
+                  "pm.test('Has id', () => pm.expect(json.data.id).to.match(/^stp_/));",
+                  "console.log('Created stop ' + json.data.name + ' id=' + json.data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{stop_name}}\",\n  \"city\": \"{{stop_city}}\",\n  \"latitude\": {{stop_latitude}},\n  \"longitude\": {{stop_longitude}},\n  \"stop_type\": \"{{stop_type}}\",\n  \"zone\": \"{{stop_zone}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{api_url}}/stops",
+              "host": ["{{api_url}}"],
+              "path": ["stops"]
+            },
+            "description": "Creates a stop. The pre-request script generates a unique {{stop_name}} so repeated runs succeed; override it (or disable the script) to send your own. After-response stores the new {{stop_id}}."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Stop by ID",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const resp = await pm.sendRequest({",
+                  "  url: pm.environment.get('api_url') + '/stops?limit=50',",
+                  "  method: 'GET',",
+                  "  header: { accept: 'application/json' }",
+                  "});",
+                  "const stops = resp.json().data || [];",
+                  "if (stops.length === 0) throw new Error('No stops found - is the DB seeded?');",
+                  "const stop = stops[Math.floor(Math.random() * stops.length)];",
+                  "pm.environment.set('stop_id', stop.id);",
+                  "console.log('stop_id = ' + stop.id);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Stop has name', () => pm.expect(json.data.name).to.be.a('string'));",
+                  "console.log('Stop: ' + json.data.name + ' (' + json.data.city + ')');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_url}}/stops/{{stop_id}}",
+              "host": ["{{api_url}}"],
+              "path": ["stops", "{{stop_id}}"]
+            },
+            "description": "Pre-request script picks a random existing stop and stores its id as {{stop_id}}."
+          },
+          "response": []
+        },
+        {
+          "name": "Stops - page 1 (stores cursor)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "const next = json.meta ? json.meta.nextCursor : null;",
+                  "pm.environment.set('cursor', next || '');",
+                  "console.log(next ? 'nextCursor stored (' + next.length + ' chars)' : 'Reached last page - cursor cleared');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_url}}/stops?limit=5",
+              "host": ["{{api_url}}"],
+              "path": ["stops"],
+              "query": [{ "key": "limit", "value": "5" }]
+            },
+            "description": "First page. The test script stores meta.nextCursor into {{cursor}} so the next-request works."
+          },
+          "response": []
+        },
+        {
+          "name": "Stops - next page (uses cursor)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const cursor = pm.environment.get('cursor');",
+                  "if (!cursor) throw new Error('No cursor stored yet. Send \"Stops - page 1 (stores cursor)\" first.');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "const next = json.meta ? json.meta.nextCursor : null;",
+                  "pm.environment.set('cursor', next || '');",
+                  "console.log(next ? 'nextCursor refreshed (' + next.length + ' chars)' : 'Reached last page - cursor cleared');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_url}}/stops?limit=5&cursor={{cursor}}",
+              "host": ["{{api_url}}"],
+              "path": ["stops"],
+              "query": [
+                { "key": "limit", "value": "5" },
+                { "key": "cursor", "value": "{{cursor}}" }
+              ]
+            },
+            "description": "Follow-up page using the cursor saved by the first-page request."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Routes",
+      "description": "Routes and their stop sequences.",
+      "item": [
+        {
+          "name": "List Routes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Has data array', () => pm.expect(json.data).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_url}}/routes?limit={{default_limit}}&sort=base_fare&order=asc",
+              "host": ["{{api_url}}"],
+              "path": ["routes"],
+              "query": [
+                { "key": "limit", "value": "{{default_limit}}" },
+                { "key": "sort", "value": "base_fare" },
+                { "key": "order", "value": "asc" }
+              ]
+            },
+            "description": "Paginated route list. Supports filters (city, mode, active, minFare, maxFare)."
+          },
+          "response": []
+        },
+        {
+          "name": "List Routes (active, cheapest first)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_url}}/routes?active=true&sort=base_fare&order=asc&limit={{default_limit}}",
+              "host": ["{{api_url}}"],
+              "path": ["routes"],
+              "query": [
+                { "key": "active", "value": "true" },
+                { "key": "sort", "value": "base_fare" },
+                { "key": "order", "value": "asc" },
+                { "key": "limit", "value": "{{default_limit}}" }
+              ]
+            },
+            "description": "Only active routes sorted by fare ascending."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Route",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const code = 'R' + Date.now().toString(36).toUpperCase();",
+                  "pm.environment.set('route_code', code);",
+                  "console.log('route_code = ' + code + ' (auto-generated so repeated runs succeed)');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.environment.set('route_id', json.data.id);",
+                  "pm.test('Is active', () => pm.expect(json.data.active).to.equal(true));",
+                  "console.log('Created route ' + json.data.code + ' fare=' + json.data.base_fare + ' id=' + json.data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{route_code}}\",\n  \"name\": \"{{route_name}}\",\n  \"mode\": \"{{route_mode}}\",\n  \"city\": \"{{route_city}}\",\n  \"distance_km\": {{route_distance_km}},\n  \"base_fare\": {{route_base_fare}},\n  \"operator\": \"{{route_operator}}\",\n  \"active\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{api_url}}/routes",
+              "host": ["{{api_url}}"],
+              "path": ["routes"]
+            },
+            "description": "Creates a route. The pre-request script generates a unique {{route_code}} so repeated runs succeed; override it (or disable the script) to send your own. After-response stores the new {{route_id}}."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Route by ID",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const resp = await pm.sendRequest({",
+                  "  url: pm.environment.get('api_url') + '/routes?limit=50',",
+                  "  method: 'GET',",
+                  "  header: { accept: 'application/json' }",
+                  "});",
+                  "const routes = resp.json().data || [];",
+                  "if (routes.length === 0) throw new Error('No routes found - is the DB seeded?');",
+                  "const route = routes[Math.floor(Math.random() * routes.length)];",
+                  "pm.environment.set('route_id', route.id);",
+                  "console.log('route_id = ' + route.id);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_url}}/routes/{{route_id}}",
+              "host": ["{{api_url}}"],
+              "path": ["routes", "{{route_id}}"]
+            },
+            "description": "Pre-request script picks a random existing route."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Stops for a Route",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const resp = await pm.sendRequest({",
+                  "  url: pm.environment.get('api_url') + '/routes?limit=50',",
+                  "  method: 'GET',",
+                  "  header: { accept: 'application/json' }",
+                  "});",
+                  "const routes = resp.json().data || [];",
+                  "if (routes.length === 0) throw new Error('No routes found - is the DB seeded?');",
+                  "const route = routes[Math.floor(Math.random() * routes.length)];",
+                  "pm.environment.set('route_id', route.id);",
+                  "console.log('route_id = ' + route.id);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "const stops = json.data || [];",
+                  "if (stops.length >= 2) {",
+                  "  const from = stops[0].id;",
+                  "  const to = stops[stops.length - 1].id;",
+                  "  pm.environment.set('from_stop_id', from);",
+                  "  pm.environment.set('to_stop_id', to);",
+                  "  console.log('from_stop_id = ' + from + ', to_stop_id = ' + to);",
+                  "} else {",
+                  "  console.log('Route has fewer than 2 stops - booking vars not updated');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_url}}/routes/{{route_id}}/stops",
+              "host": ["{{api_url}}"],
+              "path": ["routes", "{{route_id}}", "stops"]
+            },
+            "description": "Pre-request picks a random route; the test script stores its first/last stop as {{from_stop_id}}/{{to_stop_id}} for creating bookings."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Vehicles",
+      "description": "Fleet vehicles and filters.",
+      "item": [
+        {
+          "name": "List Vehicles",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Has data array', () => pm.expect(json.data).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_url}}/vehicles?limit={{default_limit}}",
+              "host": ["{{api_url}}"],
+              "path": ["vehicles"],
+              "query": [{ "key": "limit", "value": "{{default_limit}}" }]
+            },
+            "description": "Paginated vehicle list. Supports filters (status, vehicleType, routeId)."
+          },
+          "response": []
+        },
+        {
+          "name": "List Vehicles (active buses)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_url}}/vehicles?status={{vehicle_status}}&vehicleType={{vehicle_type}}&limit={{default_limit}}",
+              "host": ["{{api_url}}"],
+              "path": ["vehicles"],
+              "query": [
+                { "key": "status", "value": "{{vehicle_status}}" },
+                { "key": "vehicleType", "value": "{{vehicle_type}}" },
+                { "key": "limit", "value": "{{default_limit}}" }
+              ]
+            },
+            "description": "Active buses using {{vehicle_status}} and {{vehicle_type}}."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Vehicle",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const token = Date.now().toString(36) + Math.random().toString(36).slice(2, 5);",
+                  "pm.environment.set('vehicle_registration', 'REF-' + token.toUpperCase());",
+                  "const hasRoute = pm.environment.get('route_id');",
+                  "if (hasRoute) {",
+                  "  pm.request.body.raw = JSON.stringify({",
+                  "    registration: pm.variables.replaceIn('{{vehicle_registration}}'),",
+                  "    make: 'ReferenceBus',",
+                  "    model: 'RV-9000',",
+                  "    year: Number(pm.environment.get('vehicle_year')),",
+                  "    capacity: Number(pm.environment.get('vehicle_capacity')),",
+                  "    vehicle_type: pm.environment.get('vehicle_type'),",
+                  "    status: pm.environment.get('vehicle_status'),",
+                  "    route_id: hasRoute",
+                  "  }, null, 2);",
+                  "} else {",
+                  "  pm.request.body.raw = JSON.stringify({",
+                  "    registration: pm.variables.replaceIn('{{vehicle_registration}}'),",
+                  "    make: 'ReferenceBus',",
+                  "    model: 'RV-9000',",
+                  "    year: Number(pm.environment.get('vehicle_year')),",
+                  "    capacity: Number(pm.environment.get('vehicle_capacity')),",
+                  "    vehicle_type: pm.environment.get('vehicle_type'),",
+                  "    status: pm.environment.get('vehicle_status')",
+                  "  }, null, 2);",
+                  "}",
+                  "console.log('vehicle_registration = ' + pm.environment.get('vehicle_registration') + ' route_id = ' + (hasRoute || 'none'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.environment.set('vehicle_id', json.data.id);",
+                  "pm.test('Has id', () => pm.expect(json.data.id).to.match(/^veh_/));",
+                  "console.log('Created vehicle ' + json.data.registration + ' id=' + json.data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"registration\": \"{{vehicle_registration}}\",\n  \"make\": \"ReferenceBus\",\n  \"model\": \"RV-9000\",\n  \"year\": {{vehicle_year}},\n  \"capacity\": {{vehicle_capacity}},\n  \"vehicle_type\": \"{{vehicle_type}}\",\n  \"status\": \"{{vehicle_status}}\",\n  \"route_id\": \"{{route_id}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{api_url}}/vehicles",
+              "host": ["{{api_url}}"],
+              "path": ["vehicles"]
+            },
+            "description": "Creates a vehicle. The pre-request script generates a unique {{vehicle_registration}} so repeated runs succeed. If a {{route_id}} is present (e.g. from Create Route) it is assigned; otherwise the route_id field is omitted. After-response stores the new {{vehicle_id}}."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Vehicle by ID",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const resp = await pm.sendRequest({",
+                  "  url: pm.environment.get('api_url') + '/vehicles?limit=50',",
+                  "  method: 'GET',",
+                  "  header: { accept: 'application/json' }",
+                  "});",
+                  "const vehicles = resp.json().data || [];",
+                  "if (vehicles.length === 0) throw new Error('No vehicles found - is the DB seeded?');",
+                  "const vehicle = vehicles[Math.floor(Math.random() * vehicles.length)];",
+                  "pm.environment.set('vehicle_id', vehicle.id);",
+                  "console.log('vehicle_id = ' + vehicle.id);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_url}}/vehicles/{{vehicle_id}}",
+              "host": ["{{api_url}}"],
+              "path": ["vehicles", "{{vehicle_id}}"]
+            },
+            "description": "Pre-request script picks a random existing vehicle."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Bookings",
+      "description": "Full booking lifecycle: create, read, update, delete.",
+      "item": [
+        {
+          "name": "List Bookings",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Has data array', () => pm.expect(json.data).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_url}}/bookings?limit={{default_limit}}",
+              "host": ["{{api_url}}"],
+              "path": ["bookings"],
+              "query": [{ "key": "limit", "value": "{{default_limit}}" }]
+            },
+            "description": "Paginated booking list with joined route/stop names. Supports filters (status, routeId, travelDate, minFare, maxFare, passenger)."
+          },
+          "response": []
+        },
+        {
+          "name": "List Bookings (by travel_date + status)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_url}}/bookings?travelDate={{travel_date}}&status={{booking_status_filter}}&limit={{default_limit}}",
+              "host": ["{{api_url}}"],
+              "path": ["bookings"],
+              "query": [
+                { "key": "travelDate", "value": "{{travel_date}}" },
+                { "key": "status", "value": "{{booking_status_filter}}" },
+                { "key": "limit", "value": "{{default_limit}}" }
+              ]
+            },
+            "description": "Bookings on {{travel_date}} with status {{booking_status_filter}}."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Booking",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const api = pm.environment.get('api_url');",
+                  "const routesResp = await pm.sendRequest({ url: api + '/routes?limit=50', method: 'GET' });",
+                  "const routes = routesResp.json().data || [];",
+                  "if (routes.length === 0) throw new Error('No routes found to create a booking');",
+                  "const route = routes[Math.floor(Math.random() * routes.length)];",
+                  "const stopsResp = await pm.sendRequest({ url: api + '/routes/' + route.id + '/stops?limit=20', method: 'GET' });",
+                  "const stops = stopsResp.json().data || [];",
+                  "if (stops.length < 2) throw new Error('Route ' + route.id + ' has fewer than two stops');",
+                  "pm.environment.set('route_id', route.id);",
+                  "pm.environment.set('from_stop_id', stops[0].id);",
+                  "pm.environment.set('to_stop_id', stops[stops.length - 1].id);",
+                  "console.log('route_id = ' + route.id + ', from = ' + stops[0].id + ', to = ' + stops[stops.length - 1].id);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.environment.set('booking_id', json.data.id);",
+                  "pm.environment.set('booking_reference', json.data.reference);",
+                  "pm.test('Fare is computed', () => pm.expect(json.data.fare).to.be.a('number'));",
+                  "console.log('Created ' + json.data.reference + ' fare=' + json.data.fare + ' seats=' + json.data.seats);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"passenger_name\": \"{{passenger_name}}\",\n  \"email\": \"{{passenger_email}}\",\n  \"route_id\": \"{{route_id}}\",\n  \"from_stop_id\": \"{{from_stop_id}}\",\n  \"to_stop_id\": \"{{to_stop_id}}\",\n  \"seats\": 2,\n  \"status\": \"{{booking_status}}\",\n  \"travel_date\": \"{{travel_date}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{api_url}}/bookings",
+              "host": ["{{api_url}}"],
+              "path": ["bookings"]
+            },
+            "description": "Pre-request script picks a random route and two different stops on it, then the body is rendered with those ids. The test script stores the new booking id/reference."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Booking by ID",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('booking_id')) {",
+                  "  const resp = await pm.sendRequest({",
+                  "    url: pm.environment.get('api_url') + '/bookings?limit=1&status=confirmed',",
+                  "    method: 'GET',",
+                  "    header: { accept: 'application/json' }",
+                  "  });",
+                  "  const bookings = resp.json().data || [];",
+                  "  if (bookings.length === 0) throw new Error('No booking available (bookings list is empty)');",
+                  "  pm.environment.set('booking_id', bookings[0].id);",
+                  "  console.log('booking_id = ' + bookings[0].id);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_url}}/bookings/{{booking_id}}",
+              "host": ["{{api_url}}"],
+              "path": ["bookings", "{{booking_id}}"]
+            },
+            "description": "Uses {{booking_id}} if present, otherwise the pre-request script fetches one."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Booking (PATCH)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('booking_id')) {",
+                  "  const resp = await pm.sendRequest({",
+                  "    url: pm.environment.get('api_url') + '/bookings?limit=1&status=confirmed',",
+                  "    method: 'GET',",
+                  "    header: { accept: 'application/json' }",
+                  "  });",
+                  "  const bookings = resp.json().data || [];",
+                  "  if (bookings.length === 0) throw new Error('No booking available (bookings list is empty)');",
+                  "  pm.environment.set('booking_id', bookings[0].id);",
+                  "  console.log('booking_id = ' + bookings[0].id);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Seats updated', () => pm.expect(json.data.seats).to.equal(3));",
+                  "console.log('Updated: seats=' + json.data.seats + ' fare=' + json.data.fare + ' status=' + json.data.status);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"seats\": 3,\n  \"status\": \"pending\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{api_url}}/bookings/{{booking_id}}",
+              "host": ["{{api_url}}"],
+              "path": ["bookings", "{{booking_id}}"]
+            },
+            "description": "Updates seats (fare is recomputed server-side) and sets status to pending."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Booking (DELETE)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('booking_id')) {",
+                  "  const resp = await pm.sendRequest({",
+                  "    url: pm.environment.get('api_url') + '/bookings?limit=1&status=confirmed',",
+                  "    method: 'GET',",
+                  "    header: { accept: 'application/json' }",
+                  "  });",
+                  "  const bookings = resp.json().data || [];",
+                  "  if (bookings.length === 0) throw new Error('No booking available (bookings list is empty)');",
+                  "  pm.environment.set('booking_id', bookings[0].id);",
+                  "  console.log('booking_id = ' + bookings[0].id);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.environment.set('booking_id', '');",
+                  "console.log('Booking deleted, booking_id cleared');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{api_url}}/bookings/{{booking_id}}",
+              "host": ["{{api_url}}"],
+              "path": ["bookings", "{{booking_id}}"]
+            },
+            "description": "Deletes and clears {{booking_id}} on success."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Error scenarios",
+      "description": "Requests that intentionally exercise the API error taxonomy (400/404/405/422/429).",
+      "item": [
+        {
+          "name": "limit=0 -> 400 INVALID_QUERY",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_url}}/stops?limit=0",
+              "host": ["{{api_url}}"],
+              "path": ["stops"],
+              "query": [{ "key": "limit", "value": "0" }]
+            },
+            "description": "Expect 400."
+          },
+          "response": []
+        },
+        {
+          "name": "active=maybe -> 400 INVALID_FILTER",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_url}}/routes?active=maybe",
+              "host": ["{{api_url}}"],
+              "path": ["routes"],
+              "query": [{ "key": "active", "value": "maybe" }]
+            },
+            "description": "Expect 400."
+          },
+          "response": []
+        },
+        {
+          "name": "malformed booking id -> 400 INVALID_ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_url}}/bookings/bkg_xyz",
+              "host": ["{{api_url}}"],
+              "path": ["bookings", "bkg_xyz"]
+            },
+            "description": "Expect 400."
+          },
+          "response": []
+        },
+        {
+          "name": "unknown route -> 404 NOT_FOUND",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_url}}/routes/rte_0000000000000000",
+              "host": ["{{api_url}}"],
+              "path": ["routes", "rte_0000000000000000"]
+            },
+            "description": "Well-formed but nonexistent id. Expect 404."
+          },
+          "response": []
+        },
+        {
+          "name": "create stop (duplicate name+city) -> 409 CONFLICT",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const resp = await pm.sendRequest({",
+                  "  url: pm.environment.get('api_url') + '/stops?limit=50',",
+                  "  method: 'GET',",
+                  "  header: { accept: 'application/json' }",
+                  "});",
+                  "const stops = resp.json().data || [];",
+                  "if (stops.length === 0) throw new Error('No stops found - is the DB seeded?');",
+                  "const stop = stops[Math.floor(Math.random() * stops.length)];",
+                  "pm.environment.set('stop_name', stop.name);",
+                  "pm.environment.set('stop_city', stop.city);",
+                  "console.log('Duplicating stop ' + stop.name + ' (' + stop.city + ')');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{stop_name}}\",\n  \"city\": \"{{stop_city}}\",\n  \"latitude\": 0,\n  \"longitude\": 0,\n  \"stop_type\": \"bus\",\n  \"zone\": \"1\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{api_url}}/stops",
+              "host": ["{{api_url}}"],
+              "path": ["stops"]
+            },
+            "description": "Creates a stop that already exists (unique name+city). Expect 409 CONFLICT."
+          },
+          "response": []
+        },
+        {
+          "name": "create booking (bad payload) -> 422",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"passenger_name\": \"Nope\",\n  \"email\": \"not-an-email\",\n  \"route_id\": \"rte_0000000000000000\",\n  \"from_stop_id\": \"stp_0000000000000000\",\n  \"to_stop_id\": \"stp_0000000000000001\",\n  \"seats\": 99,\n  \"status\": \"unknown\",\n  \"travel_date\": \"2026-13-40\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{api_url}}/bookings",
+              "host": ["{{api_url}}"],
+              "path": ["bookings"]
+            },
+            "description": "Several validation failures at once. Expect 422 VALIDATION_ERROR."
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /stops/:id -> 405",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const resp = await pm.sendRequest({",
+                  "  url: pm.environment.get('api_url') + '/stops?limit=50',",
+                  "  method: 'GET',",
+                  "  header: { accept: 'application/json' }",
+                  "});",
+                  "const stops = resp.json().data || [];",
+                  "if (stops.length === 0) throw new Error('No stops found - is the DB seeded?');",
+                  "const stop = stops[Math.floor(Math.random() * stops.length)];",
+                  "pm.environment.set('stop_id', stop.id);",
+                  "console.log('stop_id = ' + stop.id);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 405', () => pm.response.to.have.status(405));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{api_url}}/stops/{{stop_id}}",
+              "host": ["{{api_url}}"],
+              "path": ["stops", "{{stop_id}}"]
+            },
+            "description": "Expect 405 with an Allow: GET header."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
