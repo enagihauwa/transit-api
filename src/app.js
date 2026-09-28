@@ -41,6 +41,10 @@ app.get('/health', (req, res) => {
 app.use('/api/v1', jsonRateLimit(), apiRouter);
 app.use('/api/v1', notFoundHandler);
 
+app.get('/explorer', (req, res) => {
+  res.redirect('/explorer.html');
+});
+
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 app.use(notFoundHandler);

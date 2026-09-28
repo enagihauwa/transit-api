@@ -1,7 +1,7 @@
 # Transit API
 
-A public REST API for a fictional transit market — stops, routes, vehicles, and bookings — plus a small
-consumer app that calls it. No authentication is required for any endpoint; the API is the product.
+A public REST API for a fictional transit market — stops, routes, vehicles, and bookings — plus a landing
+page and a consumer app that call it. No authentication is required for any endpoint; the API is the product.
 
 - **Status:** running locally only (`http://localhost:8080`) — not yet deployed to a public host.
 - **Health check:** `GET /health`
@@ -18,6 +18,7 @@ consumer app that calls it. No authentication is required for any endpoint; the 
 - [Local development](#local-development)
 - [Deployment](#deployment)
 - [Consumer app](#consumer-app)
+- [Landing page](#landing-page)
 
 ## Resource design
 
@@ -427,14 +428,53 @@ what deploying would take, for reference:
 
 ## Consumer app
 
-`public/index.html` is a single-page, dependency-free client served by the same Express app at `/`. It calls
-the live API directly from the browser (see the Network tab), and lets you:
+`public/explorer.html` is a single-page, dependency-free client served by the same Express app at
+`/explorer.html` (`/explorer` redirects there). It calls the live API directly from the browser (see the
+Network tab), and lets you:
 
 - switch between the four resources,
 - apply resource-specific filters (city, mode/type, status, fare range, travel date, …),
 - change `sort`/`order`,
 - page forward and back and see `meta.total` / current range update.
 
+It deep-links on the fragment, so `/explorer#bookings` opens straight onto that resource — that is how the
+landing page's resource cards link into it.
+
 The "API base" field defaults to `window.location.origin`, so once this is deployed the consumer calls the
 same public host it's served from — never `localhost` — and can also be pointed at any other deployment of
 this API to smoke-test it from the browser.
+
+## Landing page
+
+`public/index.html` is served at `/`. It is the front door for the project: hero, the four resources, a
+capability summary, the full endpoint table and a three-step quickstart. It is not a static mock-up — it
+reads the running API on load:
+
+- `GET /health` drives the status pill in the header (`ok` / unreachable, live),
+- `GET /api/v1/<resource>?limit=1` per resource fills the four counters and the per-card record counts from
+  `meta.total`,
+- the request console in the hero issues any endpoint you pick and renders the real status code, latency and
+  response body — including the deliberate failure cases (`?limit=5000` clamped to 100, `?sort=nonsense`
+  returning 400 `INVALID_SORT`).
+
+The "API base" field is shared with the explorer, persisted in `localStorage` under `transit.apiBase`, and
+injected into every `curl` snippet on the page, so copy-pasting a snippet always targets the base you are
+actually looking at.
+
+The **`#decision`** section is the write-up itself: why list endpoints clamp `limit` to 100 instead of
+returning `400`, with the live base URL, one pasteable `curl`, and a "proven live" card that calls
+`?limit=5000` from the reader's own browser and shows the real `200`/`meta.limit=100` response. It is the
+same decision written up in [ANSWERS.md](ANSWERS.md), so the prose cannot drift from the behaviour — and
+because the card reads `meta` live, if the clamp ever changed the page would contradict itself in public.
+
+### Light and dark theme
+
+Both pages share one theme. The `☀`/`☾` button in the header toggles it, and the choice is persisted in
+`localStorage` under `transit.theme` so it follows you between `/` and `/explorer.html`. On a first visit
+with nothing stored, the page follows `prefers-color-scheme` and keeps following it live until you make an
+explicit choice.
+
+Every colour is a CSS custom property — the dark palette on `:root`, the light palette under
+`[data-theme="light"]`. Nothing in either stylesheet hard-codes a colour, so a third theme is one block of
+variables. A tiny script in `<head>` applies the stored theme before first paint, which avoids the white
+flash you get if you set the attribute from a script at the end of `<body>`.
