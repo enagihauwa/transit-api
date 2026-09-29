@@ -898,6 +898,14 @@
     else if (scheme.addListener) scheme.addListener(onSchemeChange);
   }
 
+  function devBase() {
+    const host = window.location.hostname;
+    if (host === "localhost" || host === "127.0.0.1" || host === "::1") {
+      return window.location.origin + "/api/v1";
+    }
+    return window.location.origin;
+  }
+
   function baseUrl() {
     const raw = el("apiBase").value.trim();
     if (!raw) return window.location.origin;
@@ -1231,7 +1239,7 @@
   el("consoleSelect").addEventListener("change", paintBase);
 
   el("apiBase").addEventListener("change", () => {
-    const value = baseUrl();
+    const value = el("apiBase").value.trim();
     el("apiBase").value = value;
     storeBase(value);
     paintBase();
@@ -1259,8 +1267,8 @@
   buildQuickstart();
   buildConsoleSelect();
   applyTheme(currentTheme(), false);
-  el("apiBase").value = readStoredBase() || window.location.origin;
-  el("apiBase").value = baseUrl();
+  const storedBase = readStoredBase();
+  el("apiBase").value = storedBase && storedBase !== window.location.origin ? storedBase : devBase();
   storeBase(el("apiBase").value);
   paintBase();
   checkHealth();

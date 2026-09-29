@@ -393,6 +393,14 @@
     return `<span class="badge ${cls}">${text}</span>`;
   }
 
+  function devBase() {
+    const host = window.location.hostname;
+    if (host === "localhost" || host === "127.0.0.1" || host === "::1") {
+      return window.location.origin + "/api/v1";
+    }
+    return window.location.origin;
+  }
+
   function apiBaseValue() {
     const raw = el("apiBase").value.trim();
     if (!raw) return window.location.origin;
@@ -643,8 +651,8 @@
     load();
   });
   el("apiBase").addEventListener("change", () => {
-    el("apiBase").value = apiBaseValue();
-    el("footerBase").textContent = apiBaseValue();
+    el("apiBase").value = el("apiBase").value.trim();
+    el("footerBase").textContent = el("apiBase").value;
     state.offset = 0;
     load();
   });
@@ -688,8 +696,8 @@
   }
 
   applyTheme(currentTheme(), false);
-  el("apiBase").value = window.location.origin;
-  el("footerBase").textContent = el("apiBase").value;
+  el("apiBase").value = devBase();
+  el("footerBase").textContent = devBase();
 
   const initialResource = window.location.hash.slice(1);
   if (Object.prototype.hasOwnProperty.call(RESOURCES, initialResource)) {
